@@ -30,5 +30,5 @@ images/
 1-lakehouse/nessie/
 1-lakehouse/credentials.json
 1-lakehouse/minio/
-readme.md
+
 .vscode
