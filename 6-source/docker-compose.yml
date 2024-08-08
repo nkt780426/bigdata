@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  kafka-producer:
+    image: kafka-producer:v56
+    container_name: kafka-producer
+    networks:
+      - bigdata
+      
+  # kafka-consumer-1:
+  #   image: kafka-consumer:v01
+  #   container_name: kafka-consumer-1
+  #   networks:
+  #     - bigdata
+  # kafka-consumer-2:
+  #   image: kafka-consumer:v01
+  #   container_name: kafka-consumer-2
+  #   networks:
+  #     - bigdata
+
+networks:
+  bigdata:
+    external: true

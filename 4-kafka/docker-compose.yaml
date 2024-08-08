@@ -1,0 +1,100 @@
+version: '3.8'
+
+services:
+  kafka1:
+    image: bitnami/kafka:latest
+    container_name: kafka1
+    ports:
+      - 9194:9194
+    networks:
+      - bigdata
+    environment:
+      # Kraft
+      - KAFKA_ENABLE_KRAFT=yes
+          # Định danh node_id/quorum trong kraft, với Zookeeper là KAFKA_BROKER_ID
+      - KAFKA_CFG_NODE_ID=1
+      - KAFKA_KRAFT_CLUSTER_ID=OTMwNzFhYTY1ODNiNGE5OT
+          # Vai trò của mỗi node trong cụm kafka là broker/controller: nếu có controler tức là nó tham gia vào giao thức Raft và có vai trò đồng bộ hóa config cho các broker trong cụm nếu broker này chỉ định nó làm controller của nó
+      - KAFKA_CFG_PROCESS_ROLES=controller,broker
+          # Định nghĩa danh sách các controller (votes) trong cụm kafka như ID và địa chỉ IP, port
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@kafka1:9193,2@kafka2:9293,3@kafka3:9393
+          # Tên của listener mà các broker dùng để liên lạc với nhau
+      - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=INTERNAL
+          # Tên của listener mà các controller dùng để liên lạc với nhau
+      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      # Listener: cần 1 listener để các kafka client có thể kết nối đến, cần 1 listener để các broker có thể kết nối với nhau, cần 1 listener để các controller có thể kết nối đến nhau (do node này có vai trò controller). Tất cả các listener này phải được quảng bá (KAFKA_CFG_ADVERTISED_LISTENERS=CLIENT)
+      - ALLOW_PLAINTEXT_LISTENER=yes
+          # Định nghĩa các listener và giao thức theo ý muốn
+      - KAFKA_CFG_LISTENERS=INTERNAL://0.0.0.0:9192,CONTROLLER://0.0.0.0:9193,CLIENT://0.0.0.0:9194
+          # Ánh xạ các giao thức của các listener trên với bảo mật tương ứng (map hết với PLAINTEXT cho dễ)
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=INTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT,CLIENT:PLAINTEXT
+          # Quảng bá các listener để các kafka client và các broker khác có thể kết nối đến
+      - KAFKA_CFG_ADVERTISED_LISTENERS=INTERNAL://kafka1:9192,CLIENT://kafka1:9092
+    volumes:
+      - ./data/kafka1:/bitnami/kafka/data
+  
+  kafka2:
+    image: bitnami/kafka:latest
+    container_name: kafka2
+    ports:
+      - 9294:9294
+    networks:
+      - bigdata
+    environment:
+      # Kraft
+      - KAFKA_ENABLE_KRAFT=yes
+      - KAFKA_CFG_NODE_ID=2
+      - KAFKA_KRAFT_CLUSTER_ID=OTMwNzFhYTY1ODNiNGE5OT
+      - KAFKA_CFG_PROCESS_ROLES=controller,broker
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@kafka1:9193,2@kafka2:9293,3@kafka3:9393
+      - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=INTERNAL
+      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      # Protocol
+      - ALLOW_PLAINTEXT_LISTENER=yes
+      - KAFKA_CFG_LISTENERS=INTERNAL://0.0.0.0:9292,CONTROLLER://0.0.0.0:9293,CLIENT://0.0.0.0:9294
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=INTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT,CLIENT:PLAINTEXT
+      - KAFKA_CFG_ADVERTISED_LISTENERS=INTERNAL://kafka2:9292,CLIENT://kafka2:9294
+    volumes:
+      - ./data/kafka2:/bitnami/kafka/data
+    
+  kafka3:
+    image: bitnami/kafka:latest
+    container_name: kafka3
+    ports:
+      - 9394:9394
+    networks:
+      - bigdata
+    environment:
+      # Kraft
+      - KAFKA_ENABLE_KRAFT=yes
+      - KAFKA_CFG_NODE_ID=3
+      - KAFKA_KRAFT_CLUSTER_ID=OTMwNzFhYTY1ODNiNGE5OT
+      - KAFKA_CFG_PROCESS_ROLES=controller,broker
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@kafka1:9193,2@kafka2:9293,3@kafka3:9393
+      - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=INTERNAL
+      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      # Protocol
+      - ALLOW_PLAINTEXT_LISTENER=yes
+      - KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE=true
+      - KAFKA_CFG_LISTENERS=INTERNAL://0.0.0.0:9392,CONTROLLER://0.0.0.0:9393,CLIENT://0.0.0.0:9394
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=INTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT,CLIENT:PLAINTEXT
+      - KAFKA_CFG_ADVERTISED_LISTENERS=INTERNAL://kafka3:9392,CLIENT://kafka3:9394
+    volumes:
+      - ./data/kafka3:/bitnami/kafka/data
+
+  init-kafka:
+    image: bitnami/kafka:latest
+    container_name: init-kafka
+    command: >
+      bash -c "sleep 15 && 
+        /opt/bitnami/kafka/bin/kafka-topics.sh --create --topic orders --partitions 3 --replication-factor 3 --bootstrap-server kafka1:9192 &&
+        /opt/bitnami/kafka/bin/kafka-topics.sh --bootstrap-server kafka1:9192 --list"
+    depends_on:
+      - kafka1
+      - kafka2
+      - kafka3
+    networks:
+      - bigdata
+networks:
+  bigdata:
+    external: true

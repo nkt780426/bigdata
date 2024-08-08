@@ -1,0 +1,59 @@
+version: '3.8'
+
+x-trino-common: &trino-common
+  image: trinodb/trino:latest
+  networks:
+    - bigdata
+
+services:
+  coordinator:
+    <<: *trino-common
+    hostname: coordinator
+    container_name: coordinator
+    ports:
+      - 8070:8080
+    volumes:
+      - ./etc/coordinator/node.properties:/etc/trino/node.properties
+      - ./etc/catalog/nessie.properties:/etc/trino/catalog/nessie.properties
+      - ./etc/coordinator/config.properties:/etc/trino/config.properties
+      - ./data/coordinator:/data/trino
+      
+  worker1:
+    <<: *trino-common
+    hostname: worker1
+    container_name: worker1
+    volumes:
+      - ./etc/worker/worker1.properties:/etc/trino/node.properties
+      - ./etc/catalog/nessie.properties:/etc/trino/catalog/nessie.properties
+      - ./etc/worker/config.properties:/etc/trino/config.properties
+      - ./data/worker1:/data/trino
+    depends_on:
+      - coordinator
+
+  worker2:
+    <<: *trino-common
+    hostname: worker2
+    container_name: worker2
+    volumes:
+      - ./etc/worker/worker2.properties:/etc/trino/node.properties
+      - ./etc/catalog/nessie.properties:/etc/trino/catalog/nessie.properties
+      - ./etc/worker/config.properties:/etc/trino/config.properties
+      - ./data/worker2:/data/trino
+    depends_on:
+      - coordinator
+
+  worker3:
+    <<: *trino-common
+    hostname: worker3
+    container_name: worker3
+    volumes:
+      - ./etc/worker/worker3.properties:/etc/trino/node.properties
+      - ./etc/catalog/nessie.properties:/etc/trino/catalog/nessie.properties
+      - ./etc/worker/config.properties:/etc/trino/config.properties
+      - ./data/worker3:/data/trino
+    depends_on:
+      - coordinator
+      
+networks:
+  bigdata:
+    external: true

@@ -1,0 +1,81 @@
+version: '3.8'
+
+x-minio-common: &minio-common
+  image: quay.io/minio/minio:latest
+  environment:
+    - MINIO_ROOT_USER=admin
+    - MINIO_ROOT_PASSWORD=password
+    - MINIO_DOMAIN=storage
+    - MINIO_REGION_NAME=us-east-1
+    - MINIO_REGION=us-east-1
+    - MINIO_DISTRIBUTED_MODE_ENABLED=yes
+  command: server --console-address ":9001" http://minio{1...3}/data{1...2}
+  networks:
+    - bigdata
+  healthcheck:
+    test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+    interval: 30s
+    timeout: 20s
+    retries: 3
+
+services:
+  minio1:
+    <<: *minio-common
+    hostname: minio1
+    container_name: minio1
+    volumes:
+      - ./minio/minio1/data1:/data1
+      - ./minio/minio1/data2:/data2
+
+  minio2:
+    <<: *minio-common
+    hostname: minio2
+    container_name: minio2
+    volumes:
+      - ./minio/minio2/data1:/data1
+      - ./minio/minio2/data2:/data2
+
+  minio3:
+    <<: *minio-common
+    hostname: minio3
+    container_name: minio3
+    volumes:
+      - ./minio/minio3/data1:/data1
+      - ./minio/minio3/data2:/data2
+  
+  nginx:
+    image: nginx:latest
+    hostname: nginx
+    container_name: nginx
+    ports:
+      - 9001:9001
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - minio1
+      - minio2
+      - minio3
+    networks:
+      - bigdata
+
+  nessie:
+    image: ghcr.io/projectnessie/nessie:0.94.1
+    hostname: nessie
+    container_name: nessie
+    ports:
+      - 19120:19120
+    networks:
+      - bigdata
+
+  dremio:
+    image: dremio/dremio-oss:latest
+    hostname: dremio
+    container_name: dremio
+    ports:
+      - 9047:9047
+    networks:
+      - bigdata
+
+networks:
+  bigdata:
+    external: true
